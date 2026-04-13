@@ -23,9 +23,9 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-const makeEntry = (commitHash: string): CacheEntry => ({
+const makeEntry = (commitHash: string, timestamp = Date.now()): CacheEntry => ({
   commitHash,
-  timestamp: Date.now(),
+  timestamp,
   routes: [],
   fileHash: 'abc123',
 });
@@ -39,6 +39,10 @@ describe('hashContent', () => {
 
   it('produces different hashes for different content', () => {
     expect(hashContent('foo')).not.toBe(hashContent('bar'));
+  });
+
+  it('produces the same hash for identical content', () => {
+    expect(hashContent('same')).toBe(hashContent('same'));
   });
 });
 
@@ -82,6 +86,16 @@ describe('getEntry / setEntry', () => {
 
   it('returns undefined for missing entry', () => {
     expect(getEntry({}, 'x', 'y')).toBeUndefined();
+  });
+
+  it('overwrites an existing entry', () => {
+    const store: CacheStore = {};
+    const first = makeEntry('sha1', 1000);
+    const second = makeEntry('sha1', 2000);
+    setEntry(store, 'sha1', 'file.ts', first);
+    setEntry(store, 'sha1', 'file.ts', second);
+    expect(getEntry(store, 'sha1', 'file.ts')).toEqual(second);
+    expect(getEntry(store, 'sha1', 'file.ts')?.timestamp).toBe(2000);
   });
 });
 
