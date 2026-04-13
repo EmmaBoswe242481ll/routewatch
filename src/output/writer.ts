@@ -1,53 +1,45 @@
-import fs from 'fs';
-import path from 'path';
-import { DiffReport } from '../diff/types';
-import { formatReport, FormatOptions, OutputFormat } from './formatter';
+import * as fs from 'fs';
+import * as path from 'path';
+import { FormattedReport } from './formatter';
 
-export interface WriteOptions extends FormatOptions {
-  outputPath?: string;
-  stdout?: boolean;
+export function resolveOutputPath(outputDir: string, filename: string): string {
+  return path.resolve(outputDir, filename);
 }
 
-export function resolveOutputPath(
-  outputPath: string | undefined,
-  format: OutputFormat
-): string | undefined {
-  if (!outputPath) return undefined;
-  const ext = path.extname(outputPath);
-  if (ext) return outputPath;
-  const extMap: Record<OutputFormat, string> = {
-    json: '.json',
-    markdown: '.md',
-    text: '.txt',
-  };
-  return `${outputPath}${extMap[format]}`;
-}
-
-export function ensureDir(filePath: string): void {
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+export function ensureDir(dirPath: string): void {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
   }
 }
 
-export async function writeReport(
-  report: DiffReport,
-  options: WriteOptions
-): Promise<string | null> {
-  const formatted = formatReport(report, options);
+export interface WriteOptions {
+  outputDir: string;
+  filename: string;
+  overwrite?: boolean;
+}
 
-  if (options.stdout || !options.outputPath) {
-    process.stdout.write(formatted + '\n');
-    return null;
+export function writeReport(report: FormattedReport, options: WriteOptions): string {
+  const { outputDir, filename, overwrite = true } = options;
+
+  ensureDir(outputDir);
+
+  const outputPath = resolveOutputPath(outputDir, filename);
+
+  if (!overwrite && fs.existsSync(outputPath)) {
+    throw new Error(`File already exists at ${outputPath}. Use overwrite: true to replace it.`);
   }
 
-  const resolvedPath = resolveOutputPath(options.outputPath, options.format);
-  if (!resolvedPath) {
-    process.stdout.write(formatted + '\n');
-    return null;
-  }
+  fs.writeFileSync(outputPath, report.content, 'utf-8');
 
-  ensureDir(resolvedPath);
-  fs.writeFileSync(resolvedPath, formatted, 'utf-8');
-  return resolvedPath;
+  return outputPath;
+}
+
+export function writeReportToStdout(report: FormattedReport): void {
+  process.stdout.write(report.content + '\n');
+}
+
+export function generateFilename(fromRef: string, toRef: string, format: string): string {
+  const sanitize = (ref: string) => ref.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  return `routewatch-${sanitize(fromRef)}-${sanitize(toRef)}-${timestamp}.${format}`;
 }
