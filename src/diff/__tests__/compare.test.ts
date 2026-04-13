@@ -1,71 +1,73 @@
-import { compareRoutes } from '../compare';
-import type { ParsedRoute } from '../../parsers/types';
+import { compareRoutes, routeKey } from '../compare';
+import { Route } from '../../parsers/types';
+import { ChangeType } from '../types';
 
-const makeRoute = (method: string, path: string, params: string[] = []): ParsedRoute => ({
-  method,
+const makeRoute = (path: string, method = 'GET', params: string[] = []): Route => ({
   path,
+  method,
   params,
-  filePath: '/fake/file.ts',
+  file: `pages${path}.ts`,
   framework: 'nextjs',
 });
 
-describe('compareRoutes', () => {
-  const FROM = 'abc123';
-  const TO = 'def456';
+describe('routeKey', () => {
+  it('formats method and path', () => {
+    expect(routeKey(makeRoute('/users', 'get'))).toBe('GET:/users');
+  });
 
+  it('defaults to ANY when method is missing', () => {
+    const route: Route = { path: '/health', file: 'health.ts', framework: 'nextjs' };
+    expect(routeKey(route)).toBe('ANY:/health');
+  });
+});
+
+describe('compareRoutes', () => {
   it('detects added routes', () => {
-    const from: ParsedRoute[] = [];
-    const to: ParsedRoute[] = [makeRoute('GET', '/api/users')];
-    const result = compareRoutes(from, to, FROM, TO);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0].type).toBe('added');
-    expect(result.changes[0].path).toBe('/api/users');
-    expect(result.summary.added).toBe(1);
+    const before = [makeRoute('/users')];
+    const after = [makeRoute('/users'), makeRoute('/posts')];
+    const diff = compareRoutes(before, after);
+    expect(diff.added).toBe(1);
+    expect(diff.removed).toBe(0);
+    expect(diff.modified).toBe(0);
+    expect(diff.changes[0].type).toBe(ChangeType.Added);
+    expect(diff.changes[0].route.path).toBe('/posts');
   });
 
   it('detects removed routes', () => {
-    const from: ParsedRoute[] = [makeRoute('DELETE', '/api/posts/:id', ['id'])];
-    const to: ParsedRoute[] = [];
-    const result = compareRoutes(from, to, FROM, TO);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0].type).toBe('removed');
-    expect(result.summary.removed).toBe(1);
+    const before = [makeRoute('/users'), makeRoute('/posts')];
+    const after = [makeRoute('/users')];
+    const diff = compareRoutes(before, after);
+    expect(diff.removed).toBe(1);
+    expect(diff.changes[0].type).toBe(ChangeType.Removed);
+    expect(diff.changes[0].route.path).toBe('/posts');
   });
 
-  it('detects modified routes (param changes)', () => {
-    const from: ParsedRoute[] = [makeRoute('GET', '/api/items/:id', ['id'])];
-    const to: ParsedRoute[] = [makeRoute('GET', '/api/items/:id', ['id', 'version'])];
-    const result = compareRoutes(from, to, FROM, TO);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0].type).toBe('modified');
-    expect(result.summary.modified).toBe(1);
+  it('detects modified routes with param changes', () => {
+    const before = [makeRoute('/users/[id]', 'GET', ['id'])];
+    const after = [makeRoute('/users/[id]', 'GET', ['id', 'expand'])];
+    // Keys differ — treat as removed+added unless paths match
+    // Adjust: use same path so keys match
+    const bRoute: Route = { path: '/users/[id]', method: 'GET', params: ['id'], file: 'f.ts', framework: 'nextjs' };
+    const aRoute: Route = { path: '/users/[id]', method: 'GET', params: ['id', 'expand'], file: 'f.ts', framework: 'nextjs' };
+    const diff = compareRoutes([bRoute], [aRoute]);
+    expect(diff.modified).toBe(1);
+    expect(diff.changes[0].type).toBe(ChangeType.Modified);
+    expect(diff.changes[0].notes).toContain('Added params: expand');
   });
 
-  it('returns no changes for identical routes', () => {
-    const routes: ParsedRoute[] = [makeRoute('POST', '/api/login')];
-    const result = compareRoutes(routes, routes, FROM, TO);
-    expect(result.changes).toHaveLength(0);
-    expect(result.summary.total).toBe(0);
+  it('returns empty diff for identical routes', () => {
+    const routes = [makeRoute('/users'), makeRoute('/posts')];
+    const diff = compareRoutes(routes, [...routes]);
+    expect(diff.added).toBe(0);
+    expect(diff.removed).toBe(0);
+    expect(diff.modified).toBe(0);
+    expect(diff.changes).toHaveLength(0);
   });
 
-  it('sets fromCommit and toCommit on result', () => {
-    const result = compareRoutes([], [], FROM, TO);
-    expect(result.fromCommit).toBe(FROM);
-    expect(result.toCommit).toBe(TO);
-  });
-
-  it('handles multiple changes at once', () => {
-    const from: ParsedRoute[] = [
-      makeRoute('GET', '/api/users'),
-      makeRoute('DELETE', '/api/legacy'),
-    ];
-    const to: ParsedRoute[] = [
-      makeRoute('GET', '/api/users'),
-      makeRoute('POST', '/api/orders'),
-    ];
-    const result = compareRoutes(from, to, FROM, TO);
-    expect(result.summary.added).toBe(1);
-    expect(result.summary.removed).toBe(1);
-    expect(result.summary.modified).toBe(0);
+  it('handles empty before and after', () => {
+    const diff = compareRoutes([], []);
+    expect(diff.added).toBe(0);
+    expect(diff.removed).toBe(0);
+    expect(diff.changes).toHaveLength(0);
   });
 });

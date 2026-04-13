@@ -1,67 +1,66 @@
-import type { ParsedRoute } from '../parsers/types';
-import type { ChangeType, DiffResult, RouteChange } from './types';
+import { Route } from '../parsers/types';
+import { RouteDiff, RouteChange, ChangeType } from './types';
 
-function routeKey(route: ParsedRoute): string {
-  return `${route.method.toUpperCase()}:${route.path}`;
+export function routeKey(route: Route): string {
+  return `${route.method?.toUpperCase() ?? 'ANY'}:${route.path}`;
+}
+
+function detectParamChanges(before: Route, after: Route): string[] {
+  const notes: string[] = [];
+  const removedParams = (before.params ?? []).filter(
+    (p) => !(after.params ?? []).includes(p)
+  );
+  const addedParams = (after.params ?? []).filter(
+    (p) => !(before.params ?? []).includes(p)
+  );
+  if (removedParams.length > 0) {
+    notes.push(`Removed params: ${removedParams.join(', ')}`);
+  }
+  if (addedParams.length > 0) {
+    notes.push(`Added params: ${addedParams.join(', ')}`);
+  }
+  return notes;
 }
 
 export function compareRoutes(
-  fromRoutes: ParsedRoute[],
-  toRoutes: ParsedRoute[],
-  fromCommit: string,
-  toCommit: string
-): DiffResult {
-  const fromMap = new Map<string, ParsedRoute>();
-  const toMap = new Map<string, ParsedRoute>();
+  before: Route[],
+  after: Route[]
+): RouteDiff {
+  const beforeMap = new Map<string, Route>();
+  const afterMap = new Map<string, Route>();
 
-  for (const route of fromRoutes) fromMap.set(routeKey(route), route);
-  for (const route of toRoutes) toMap.set(routeKey(route), route);
+  for (const route of before) beforeMap.set(routeKey(route), route);
+  for (const route of after) afterMap.set(routeKey(route), route);
 
   const changes: RouteChange[] = [];
 
-  for (const [key, route] of toMap) {
-    if (!fromMap.has(key)) {
-      changes.push({
-        type: 'added',
-        method: route.method,
-        path: route.path,
-        params: route.params,
-        after: { method: route.method, path: route.path, params: route.params },
-      });
+  for (const [key, route] of beforeMap) {
+    if (!afterMap.has(key)) {
+      changes.push({ type: ChangeType.Removed, route });
     } else {
-      const before = fromMap.get(key)!;
-      const paramsChanged =
-        JSON.stringify(before.params?.sort()) !== JSON.stringify(route.params?.sort());
-      if (paramsChanged) {
+      const afterRoute = afterMap.get(key)!;
+      const notes = detectParamChanges(route, afterRoute);
+      if (notes.length > 0) {
         changes.push({
-          type: 'modified',
-          method: route.method,
-          path: route.path,
-          before: { method: before.method, path: before.path, params: before.params },
-          after: { method: route.method, path: route.path, params: route.params },
+          type: ChangeType.Modified,
+          route: afterRoute,
+          before: route,
+          notes,
         });
       }
     }
   }
 
-  for (const [key, route] of fromMap) {
-    if (!toMap.has(key)) {
-      changes.push({
-        type: 'removed',
-        method: route.method,
-        path: route.path,
-        params: route.params,
-        before: { method: route.method, path: route.path, params: route.params },
-      });
+  for (const [key, route] of afterMap) {
+    if (!beforeMap.has(key)) {
+      changes.push({ type: ChangeType.Added, route });
     }
   }
 
-  const summary = {
-    added: changes.filter((c) => c.type === 'added').length,
-    removed: changes.filter((c) => c.type === 'removed').length,
-    modified: changes.filter((c) => c.type === 'modified').length,
-    total: changes.length,
+  return {
+    added: changes.filter((c) => c.type === ChangeType.Added).length,
+    removed: changes.filter((c) => c.type === ChangeType.Removed).length,
+    modified: changes.filter((c) => c.type === ChangeType.Modified).length,
+    changes,
   };
-
-  return { fromCommit, toCommit, changes, summary };
 }
