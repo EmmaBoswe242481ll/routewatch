@@ -46,6 +46,7 @@ routewatch diff --from HEAD~1 --to HEAD --format json --output report.json
 | `--to` | Ending commit SHA or ref (default: `HEAD`) |
 | `--format` | Output format: `text` or `json` (default: `text`) |
 | `--output` | Write report to a file instead of stdout |
+| `--ignore` | Comma-separated list of route prefixes to exclude (e.g. `/health,/internal`) |
 
 ## Contributing
 
