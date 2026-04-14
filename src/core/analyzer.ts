@@ -43,6 +43,23 @@ async function getRoutesAtRef(
   return parseFiles(validFiles, framework === 'auto' ? undefined : framework);
 }
 
+/**
+ * Filters a list of changed files based on include/exclude glob patterns.
+ * A file is included if it matches at least one include pattern (when specified)
+ * and does not match any exclude pattern.
+ */
+function filterFiles(
+  files: string[],
+  include?: string[],
+  exclude?: string[]
+): string[] {
+  return files.filter((file) => {
+    if (include && !include.some((pattern) => file.includes(pattern))) return false;
+    if (exclude && exclude.some((pattern) => file.includes(pattern))) return false;
+    return true;
+  });
+}
+
 export async function analyzeCommits(
   options: AnalyzerOptions
 ): Promise<AnalyzerResult> {
@@ -50,11 +67,7 @@ export async function analyzeCommits(
 
   const changedFiles = await getChangedFiles(repoPath, fromRef, toRef);
 
-  const filteredFiles = changedFiles.filter((file) => {
-    if (include && !include.some((pattern) => file.includes(pattern))) return false;
-    if (exclude && exclude.some((pattern) => file.includes(pattern))) return false;
-    return true;
-  });
+  const filteredFiles = filterFiles(changedFiles, include, exclude);
 
   const [fromRoutes, toRoutes] = await Promise.all([
     getRoutesAtRef(fromRef, filteredFiles, repoPath, framework),
