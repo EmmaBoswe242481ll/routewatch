@@ -1,65 +1,44 @@
 import { RouteDiff } from '../diff/types';
-import { NotifierOptions, NotificationPayload, NotificationChannel } from './types';
+import { NotificationPayload } from './types';
+
+export interface NotifierOptions {
+  repository: string;
+  fromRef: string;
+  toRef: string;
+}
 
 export function buildPayload(
-  diff: RouteDiff,
-  fromRef: string,
-  toRef: string
+  diffs: RouteDiff[],
+  options: NotifierOptions
 ): NotificationPayload {
-  const { added, removed, modified } = diff;
-  const totalChanges = added.length + removed.length + modified.length;
-
+  const added = diffs.filter((d) => d.type === 'added').length;
+  const removed = diffs.filter((d) => d.type === 'removed').length;
+  const modified = diffs.filter((d) => d.type === 'modified').length;
   return {
-    summary: `RouteWatch: ${totalChanges} route change(s) detected between ${fromRef} and ${toRef}`,
-    fromRef,
-    toRef,
-    added: added.map((r) => `${r.method} ${r.path}`),
-    removed: removed.map((r) => `${r.method} ${r.path}`),
-    modified: modified.map((r) => `${r.method} ${r.path}`),
-    totalChanges,
+    repository: options.repository,
+    fromRef: options.fromRef,
+    toRef: options.toRef,
     timestamp: new Date().toISOString(),
+    summary: { added, removed, modified, total: diffs.length },
+    changes: diffs,
   };
 }
 
 export function formatPayloadAsText(payload: NotificationPayload): string {
-  const lines: string[] = [payload.summary, ''];
-
-  if (payload.added.length > 0) {
-    lines.push(`Added (${payload.added.length}):`);
-    payload.added.forEach((r) => lines.push(`  + ${r}`));
-    lines.push('');
+  const lines: string[] = [
+    `RouteWatch Report: ${payload.repository}`,
+    `Comparing ${payload.fromRef} → ${payload.toRef}`,
+    `Timestamp: ${payload.timestamp}`,
+    '',
+    `Summary: +${payload.summary.added} added, -${payload.summary.removed} removed, ~${payload.summary.modified} modified`,
+    '',
+  ];
+  for (const change of payload.changes) {
+    const symbol = change.type === 'added' ? '+' : change.type === 'removed' ? '-' : '~';
+    const route = change.after ?? change.before;
+    if (route) {
+      lines.push(`  ${symbol} [${route.method}] ${route.path}`);
+    }
   }
-
-  if (payload.removed.length > 0) {
-    lines.push(`Removed (${payload.removed.length}):`);
-    payload.removed.forEach((r) => lines.push(`  - ${r}`));
-    lines.push('');
-  }
-
-  if (payload.modified.length > 0) {
-    lines.push(`Modified (${payload.modified.length}):`);
-    payload.modified.forEach((r) => lines.push(`  ~ ${r}`));
-    lines.push('');
-  }
-
-  return lines.join('\n').trim();
-}
-
-export async function notify(
-  diff: RouteDiff,
-  fromRef: string,
-  toRef: string,
-  options: NotifierOptions
-): Promise<void> {
-  if (!options.channels || options.channels.length === 0) return;
-
-  const payload = buildPayload(diff, fromRef, toRef);
-
-  if (payload.totalChanges === 0 && !options.notifyOnNoChanges) return;
-
-  const tasks = options.channels.map((channel: NotificationChannel) =>
-    channel.send(payload)
-  );
-
-  await Promise.all(tasks);
+  return lines.join('\n');
 }

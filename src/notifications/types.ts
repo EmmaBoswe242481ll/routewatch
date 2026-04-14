@@ -1,20 +1,15 @@
+import { RouteDiff } from '../diff/types';
+
 export interface NotificationPayload {
-  summary: string;
+  repository: string;
   fromRef: string;
   toRef: string;
-  added: string[];
-  removed: string[];
-  modified: string[];
-  totalChanges: number;
   timestamp: string;
-}
-
-export interface NotificationChannel {
-  name: string;
-  send(payload: NotificationPayload): Promise<void>;
-}
-
-export interface NotifierOptions {
-  channels: NotificationChannel[];
-  notifyOnNoChanges?: boolean;
+  summary: {
+    added: number;
+    removed: number;
+    modified: number;
+    total: number;
+  };
+  changes: RouteDiff[];
 }
