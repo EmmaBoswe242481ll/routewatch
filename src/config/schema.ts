@@ -18,3 +18,18 @@ export const DEFAULT_CONFIG: RouteWatchConfig = {
   outputFormat: 'console',
   ignore: ['node_modules', '.next', 'dist'],
 };
+
+/**
+ * Parses and validates a partial config object, merging it with defaults.
+ * Throws a descriptive error if the provided config is invalid.
+ */
+export function parseConfig(input: unknown): RouteWatchConfig {
+  const result = RouteWatchConfigSchema.safeParse(input);
+  if (!result.success) {
+    const messages = result.error.errors
+      .map((e) => `  - ${e.path.join('.')}: ${e.message}`)
+      .join('\n');
+    throw new Error(`Invalid RouteWatch configuration:\n${messages}`);
+  }
+  return result.data;
+}
