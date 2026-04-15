@@ -62,3 +62,20 @@ export function appendAuditEntry(
 export function clearAuditTrail(auditPath: string): void {
   saveAuditTrail(auditPath, { version: 1, entries: [] });
 }
+
+/**
+ * Returns audit entries filtered by a date range (inclusive).
+ * @param trail - The audit trail to filter.
+ * @param from - Start of the date range.
+ * @param to - End of the date range.
+ */
+export function filterEntriesByDateRange(
+  trail: AuditTrail,
+  from: Date,
+  to: Date
+): AuditEntry[] {
+  return trail.entries.filter((entry) => {
+    const ts = new Date(entry.timestamp);
+    return ts >= from && ts <= to;
+  });
+}
