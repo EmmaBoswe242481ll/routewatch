@@ -1,3 +1,7 @@
+/**
+ * Output module for routewatch.
+ * Provides formatting and writing utilities for route analysis reports.
+ */
 export { formatAsJson, formatAsMarkdown, formatAsText, formatReport } from './formatter';
 export type { FormattedReport, ReportFormat } from './formatter';
 export {
