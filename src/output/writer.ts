@@ -29,7 +29,12 @@ export function writeReport(report: FormattedReport, options: WriteOptions): str
     throw new Error(`File already exists at ${outputPath}. Use overwrite: true to replace it.`);
   }
 
-  fs.writeFileSync(outputPath, report.content, 'utf-8');
+  try {
+    fs.writeFileSync(outputPath, report.content, 'utf-8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to write report to ${outputPath}: ${message}`);
+  }
 
   return outputPath;
 }
