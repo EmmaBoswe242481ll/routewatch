@@ -26,6 +26,11 @@ describe('Tag types shape', () => {
     expect(route.tags).toHaveLength(2);
   });
 
+  it('TaggedRoute allows empty tags array', () => {
+    const route: TaggedRoute = { path: '/health', method: 'GET', tags: [] };
+    expect(route.tags).toHaveLength(0);
+  });
+
   it('TagSummary aggregates by tag', () => {
     const summary: TagSummary = {
       tag: 'api',
@@ -37,5 +42,14 @@ describe('Tag types shape', () => {
     };
     expect(summary.count).toBe(2);
     expect(summary.routes).toHaveLength(2);
+  });
+
+  it('TagSummary count matches routes length', () => {
+    const summary: TagSummary = {
+      tag: 'users',
+      count: 1,
+      routes: [{ path: '/api/users', method: 'GET', tags: ['users'] }],
+    };
+    expect(summary.count).toBe(summary.routes.length);
   });
 });
