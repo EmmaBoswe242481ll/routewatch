@@ -43,6 +43,12 @@ describe('classifyChange', () => {
     expect(result.level).toBe('warning');
     expect(result.reason).toContain('filter');
   });
+
+  it('includes the route path in the classified change', () => {
+    const change = makeChange({ type: 'removed' });
+    const result = classifyChange(change);
+    expect(result.change.route.path).toBe('/api/test');
+  });
 });
 
 describe('classifyChanges', () => {
@@ -55,6 +61,10 @@ describe('classifyChanges', () => {
     expect(results).toHaveLength(2);
     expect(results[0].severity.level).toBe('info');
     expect(results[1].severity.level).toBe('critical');
+  });
+
+  it('returns an empty array when given no changes', () => {
+    expect(classifyChanges([])).toEqual([]);
   });
 });
 
