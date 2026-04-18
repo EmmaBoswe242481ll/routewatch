@@ -15,6 +15,19 @@ describe('TrendEntry shape', () => {
     expect(entry.changeCount).toBe(3);
     expect(entry.changeTypes).toHaveLength(2);
   });
+
+  it('reflects routeKey composed of method and path', () => {
+    const entry: TrendEntry = {
+      routeKey: 'POST:/api/items',
+      method: 'POST',
+      path: '/api/items',
+      changeCount: 1,
+      firstSeen: '2024-02-01T00:00:00.000Z',
+      lastSeen: '2024-02-01T00:00:00.000Z',
+      changeTypes: ['added'],
+    };
+    expect(entry.routeKey).toBe(`${entry.method}:${entry.path}`);
+  });
 });
 
 describe('TrendReport shape', () => {
