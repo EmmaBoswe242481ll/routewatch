@@ -22,3 +22,13 @@ export function buildLabelSummary(
     labelCounts,
   };
 }
+
+/**
+ * Returns the label with the highest number of associated changes.
+ * Returns null if there are no labeled changes.
+ */
+export function dominantLabel(summary: LabelSummary): string | null {
+  const entries = Object.entries(summary.labelCounts);
+  if (entries.length === 0) return null;
+  return entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+}
