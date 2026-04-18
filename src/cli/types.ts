@@ -11,10 +11,12 @@ export interface RunOptions {
   cwd?: string;
 }
 
+export type OutputFormat = 'text' | 'json' | 'markdown';
+
 export interface CliArgs {
   from: string;
   to: string;
-  format: 'text' | 'json' | 'markdown';
+  format: OutputFormat;
   config?: string;
   cwd?: string;
 }
