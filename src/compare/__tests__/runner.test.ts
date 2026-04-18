@@ -76,10 +76,12 @@ describe('runCompare', () => {
     expect(mockFilterRoutes).not.toHaveBeenCalled();
   });
 
-  it('handles empty changed files gracefully', async () => {
+  it('handles empty changed files list', async () => {
     mockCommits.getChangedFiles.mockResolvedValue([]);
     mockAnalyzer.filterFiles.mockReturnValue([]);
     mockDiff.compareRoutes.mockReturnValue({ added: [], removed: [], modified: [], unchanged: [] });
+    mockReporter.generateReport.mockReturnValue({ routes: {}, meta: {} } as any);
+    mockSummary.buildSummary.mockReturnValue({ totalChanges: 0 } as any);
 
     const result = await runCompare('/repo', {
       range: { from: 'abc123', to: 'def456' },
@@ -87,5 +89,6 @@ describe('runCompare', () => {
 
     expect(result.added).toBe(0);
     expect(result.removed).toBe(0);
+    expect(result.modified).toBe(0);
   });
 });
