@@ -77,3 +77,11 @@ export function formatReplayText(result: ReplayResult): string {
   }
   return lines.join('\n');
 }
+
+/**
+ * Returns true if the replay result represents a fully successful run —
+ * no errors and at least one change replayed.
+ */
+export function isSuccessfulReplay(result: ReplayResult): boolean {
+  return result.errors.length === 0 && result.changesReplayed > 0;
+}
