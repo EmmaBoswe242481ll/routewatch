@@ -35,6 +35,14 @@ describe('projectChange', () => {
     const result = projectChange(change, { fields: [{ field: 'file' }], includeNulls: true });
     expect(result).toHaveProperty('file', null);
   });
+
+  it('projects multiple fields including type', () => {
+    const result = projectChange(
+      makeChange({ type: 'removed' }),
+      { fields: [{ field: 'type' }, { field: 'path' }] }
+    );
+    expect(result).toEqual({ type: 'removed', path: '/api/users' });
+  });
 });
 
 describe('projectChanges', () => {
@@ -43,6 +51,11 @@ describe('projectChanges', () => {
     const results = projectChanges(changes, { fields: [{ field: 'path' }] });
     expect(results).toHaveLength(2);
     expect(results[1]).toEqual({ path: '/api/posts' });
+  });
+
+  it('returns empty array for empty input', () => {
+    const results = projectChanges([], { fields: [{ field: 'path' }] });
+    expect(results).toEqual([]);
   });
 });
 
