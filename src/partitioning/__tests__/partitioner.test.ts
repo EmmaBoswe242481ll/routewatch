@@ -47,6 +47,16 @@ describe('partitionChanges', () => {
     expect(partitions.every(p => p.changes.length === 0)).toBe(true);
     expect(unmatched).toHaveLength(0);
   });
+
+  it('returns one partition per rule', () => {
+    const { partitions } = partitionChanges([], rules);
+    expect(partitions).toHaveLength(rules.length);
+  });
+
+  it('preserves rule names in partition results', () => {
+    const { partitions } = partitionChanges([], rules);
+    expect(partitions.map(p => p.name)).toEqual(rules.map(r => r.name));
+  });
 });
 
 describe('buildPartitionSummary', () => {
