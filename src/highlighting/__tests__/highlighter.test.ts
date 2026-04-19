@@ -38,6 +38,12 @@ describe('highlightChange', () => {
     const result = highlightChange(makeChange('/api/items', 'DELETE', 'added'), rules);
     expect(result.highlights).toHaveLength(2);
   });
+
+  it('returns the original change on the result', () => {
+    const change = makeChange('/api/users');
+    const result = highlightChange(change, rules);
+    expect(result.change).toBe(change);
+  });
 });
 
 describe('highlightChanges', () => {
@@ -45,6 +51,10 @@ describe('highlightChanges', () => {
     const changes = [makeChange('/api/a'), makeChange('/b', 'DELETE')];
     const results = highlightChanges(changes, rules);
     expect(results).toHaveLength(2);
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(highlightChanges([], rules)).toEqual([]);
   });
 });
 
