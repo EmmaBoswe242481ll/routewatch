@@ -53,6 +53,12 @@ describe('withRetry', () => {
     });
     expect(result.state.totalDelayMs).toBeLessThanOrEqual(10);
   });
+
+  it('records totalDelayMs as zero when no retries occur', async () => {
+    const fn = jest.fn().mockResolvedValue('instant');
+    const result = await withRetry(fn, { initialDelayMs: 0 });
+    expect(result.state.totalDelayMs).toBe(0);
+  });
 });
 
 describe('formatRetryText', () => {
@@ -76,5 +82,16 @@ describe('formatRetryText', () => {
     expect(text).toContain('300ms');
     expect(text).toContain('[1] e1');
     expect(text).toContain('Final error: e3');
+  });
+
+  it('formats a successful result with multiple attempts', () => {
+    const result: RetryResult<string> = {
+      value: 'eventual',
+      state: { attempt: 3, totalDelayMs: 150, errors: ['e1', 'e2'], succeeded: true },
+    };
+    const text = formatRetryText(result);
+    expect(text).toContain('succeeded');
+    expect(text).toContain('3 attempt');
+    expect(text).toContain('150ms');
   });
 });
