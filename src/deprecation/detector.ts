@@ -72,6 +72,19 @@ export function detectDeprecations(
   };
 }
 
+/**
+ * Returns all deprecation rules that did not match any route in the given changes.
+ * Useful for identifying stale or misconfigured rules.
+ */
+export function findUnusedRules(
+  changes: RouteChange[],
+  rules: DeprecationRule[]
+): DeprecationRule[] {
+  return rules.filter(
+    (rule) => !changes.some((change) => matchesDeprecationRule(change.route, rule))
+  );
+}
+
 export function formatDeprecationText(report: DeprecationReport): string {
   const lines: string[] = ['## Deprecation Report'];
 
