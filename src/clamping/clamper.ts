@@ -1,51 +1,37 @@
-import { RouteChange } from '../diff/types';
+import type { RouteChange } from '../diff/types';
+import type { ClampOptions, ClampResult } from './types';
+import { buildClampResult } from './types';
 
-export interface ClampOptions {
-  maxAdded?: number;
-  maxRemoved?: number;
-  maxModified?: number;
-  maxTotal?: number;
-}
-
-export interface ClampResult {
-  changes: RouteChange[];
-  clamped: boolean;
-  originalCount: number;
-  clampedCount: number;
-}
-
+/**
+ * Clamps a list of route changes to a numeric window [min, max].
+ * Changes are first sorted by path then sliced to the desired range.
+ */
 export function clampChanges(
   changes: RouteChange[],
-  options: ClampOptions
+  options: ClampOptions = {}
 ): ClampResult {
-  const originalCount = changes.length;
+  const { min = 0, max } = options;
+  const original = changes.length;
 
-  let added = changes.filter(c => c.type === 'added');
-  let removed = changes.filter(c => c.type === 'removed');
-  let modified = changes.filter(c => c.type === 'modified');
+  const sorted = [...changes].sort((a, b) =>
+    a.path.localeCompare(b.path)
+  );
 
-  if (options.maxAdded !== undefined) added = added.slice(0, options.maxAdded);
-  if (options.maxRemoved !== undefined) removed = removed.slice(0, options.maxRemoved);
-  if (options.maxModified !== undefined) modified = modified.slice(0, options.maxModified);
+  const lower = Math.max(0, min);
+  const upper = max !== undefined ? Math.min(sorted.length, max) : sorted.length;
 
-  let result = [...added, ...removed, ...modified];
+  const clamped = lower <= upper ? sorted.slice(lower, upper) : [];
 
-  if (options.maxTotal !== undefined) {
-    result = result.slice(0, options.maxTotal);
-  }
-
-  return {
-    changes: result,
-    clamped: result.length < originalCount,
-    originalCount,
-    clampedCount: result.length,
-  };
+  return buildClampResult(clamped, original, { min, max });
 }
 
 export function formatClampText(result: ClampResult): string {
-  if (!result.clamped) {
-    return `Clamping: all ${result.originalCount} change(s) retained.`;
-  }
-  const dropped = result.originalCount - result.clampedCount;
-  return `Clamping: retained ${result.clampedCount}/${result.originalCount} change(s), dropped ${dropped}.`;
+  const lines: string[] = [
+    `Clamp Result`,
+    `  Original : ${result.original}`,
+    `  Kept     : ${result.changes.length}`,
+    `  Clamped  : ${result.clamped}`,
+    `  Range    : [${result.min ?? 0}, ${result.max ?? result.original}]`,
+  ];
+  return lines.join('\n');
 }

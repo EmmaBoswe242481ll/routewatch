@@ -1,68 +1,63 @@
 import { clampChanges, formatClampText } from '../clamper';
-import { RouteChange } from '../../diff/types';
+import type { RouteChange } from '../../diff/types';
 
-function makeChange(type: 'added' | 'removed' | 'modified', path: string): RouteChange {
-  return {
-    type,
-    method: 'GET',
-    path,
-    ...(type === 'modified' ? { paramChanges: [] } : {}),
-  } as RouteChange;
+function makeChange(path: string): RouteChange {
+  return { type: 'added', path, method: 'GET', params: [] };
 }
 
+const BASE = [
+  makeChange('/api/users'),
+  makeChange('/api/orders'),
+  makeChange('/api/products'),
+  makeChange('/api/auth'),
+  makeChange('/api/health'),
+];
+
 describe('clampChanges', () => {
-  const changes = [
-    makeChange('added', '/a'),
-    makeChange('added', '/b'),
-    makeChange('removed', '/c'),
-    makeChange('modified', '/d'),
-    makeChange('modified', '/e'),
-  ];
-
-  it('returns all changes when no limits set', () => {
-    const result = clampChanges(changes, {});
+  it('returns all changes when no options provided', () => {
+    const result = clampChanges(BASE);
     expect(result.changes).toHaveLength(5);
-    expect(result.clamped).toBe(false);
+    expect(result.clamped).toBe(0);
   });
 
-  it('clamps added changes', () => {
-    const result = clampChanges(changes, { maxAdded: 1 });
-    const added = result.changes.filter(c => c.type === 'added');
-    expect(added).toHaveLength(1);
-    expect(result.clamped).toBe(true);
+  it('slices to [0, max]', () => {
+    const result = clampChanges(BASE, { max: 3 });
+    expect(result.changes).toHaveLength(3);
+    expect(result.clamped).toBe(2);
   });
 
-  it('clamps removed changes', () => {
-    const result = clampChanges(changes, { maxRemoved: 0 });
-    const removed = result.changes.filter(c => c.type === 'removed');
-    expect(removed).toHaveLength(0);
-    expect(result.clamped).toBe(true);
+  it('slices to [min, end]', () => {
+    const result = clampChanges(BASE, { min: 2 });
+    expect(result.changes).toHaveLength(3);
+    expect(result.clamped).toBe(2);
   });
 
-  it('clamps modified changes', () => {
-    const result = clampChanges(changes, { maxModified: 1 });
-    const modified = result.changes.filter(c => c.type === 'modified');
-    expect(modified).toHaveLength(1);
+  it('slices to [min, max]', () => {
+    const result = clampChanges(BASE, { min: 1, max: 4 });
+    expect(result.changes).toHaveLength(3);
   });
 
-  it('clamps total changes', () => {
-    const result = clampChanges(changes, { maxTotal: 2 });
-    expect(result.changes).toHaveLength(2);
-    expect(result.clampedCount).toBe(2);
-    expect(result.originalCount).toBe(5);
+  it('returns empty array when min >= max', () => {
+    const result = clampChanges(BASE, { min: 4, max: 2 });
+    expect(result.changes).toHaveLength(0);
+    expect(result.clamped).toBe(5);
+  });
+
+  it('sorts changes by path before clamping', () => {
+    const result = clampChanges(BASE, { max: 2 });
+    const paths = result.changes.map((c) => c.path);
+    expect(paths).toEqual([...paths].sort());
   });
 });
 
 describe('formatClampText', () => {
-  it('reports no clamping', () => {
-    const result = clampChanges([makeChange('added', '/x')], {});
-    expect(formatClampText(result)).toContain('retained');
-  });
-
-  it('reports dropped count when clamped', () => {
-    const changes = [makeChange('added', '/a'), makeChange('added', '/b')];
-    const result = clampChanges(changes, { maxTotal: 1 });
+  it('includes summary fields', () => {
+    const result = clampChanges(BASE, { min: 1, max: 3 });
     const text = formatClampText(result);
-    expect(text).toContain('dropped 1');
+    expect(text).toContain('Clamp Result');
+    expect(text).toContain('Original');
+    expect(text).toContain('Kept');
+    expect(text).toContain('Clamped');
+    expect(text).toContain('Range');
   });
 });
